@@ -1,12 +1,14 @@
 import { useRef, useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
+import cn from 'classnames';
 import Spinner from '@/components/icons/Spinner';
 import NextLink from '@/components/NextLink';
-import cn from 'classnames';
 import {
 	initialContactFormValues,
 	useContactFormik,
 	useSaveContactFormToSessionStorage,
 } from '@/context/ContactFormProvider';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 export default function ContactForm() {
 	//consume the formik  value for this form
@@ -17,10 +19,13 @@ export default function ContactForm() {
 
 	//the ref for the first name input
 	const nameInputRef = useRef(null);
+	const contactFormTurnstileWidgetRef = useRef(null);
 
 	//form states
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isValidForm, setIsValidForm] = useState(false);
+	const [turnstileWidgetStatus, setTurnstileWidgetStatus] = useState('');
+	const [turnstileToken, setTurnstileToken] = useState('');
 
 	//focus the name input when the page loads (ie  when the component first mounts)
 	useEffect(() => {
@@ -41,26 +46,21 @@ export default function ContactForm() {
 	}, [formik?.values, saveContactFormValuesToSessionStorage]);
 
 	//function to handle form submission
-	function handleFormSubmit(e) {
+	async function handleFormSubmit(e) {
 		e.preventDefault();
 		//validate the form again
 		formik.validateForm();
-		if (isValidForm) {
-			setIsSubmitting(true);
-			//mimic form submission to the server runs after 3s
-			//In reality you will send the form values to your backend
-			//make sure to validate the form values on the server again
-			window.setTimeout(() => {
-				window.alert('The form was submitted successfully');
-				//by now the form has been submitted
-				setIsSubmitting(false);
-				//reset the form
-				formik.resetForm({
-					values: initialContactFormValues,
-					touched: {},
-					errors: {},
-				});
-			}, 1000);
+		if (turnstileToken && turnstileWidgetStatus === 'solved') {
+			//the data to send in the request data
+			const reqData = {
+				...formik?.values,
+				turnstileToken,
+			};
+
+			
+			
+		} else {
+			toast.error('Please solve or wait for challenge to be solved');
 		}
 	}
 
@@ -196,7 +196,7 @@ export default function ContactForm() {
 					</small>
 				) : null}
 			</div>
-			<div className='mt-5'>
+			<div className='my-5'>
 				<p className='text-sm font-medium'>
 					<label
 						className='sr-only'
@@ -231,6 +231,19 @@ export default function ContactForm() {
 					</span>
 				</p>
 			</div>
+			<TurnstileWidget
+				ref={contactFormTurnstileWidgetRef}
+				onSuccess={token => {
+					setTurnstileWidgetStatus('solved');
+					setTurnstileToken(token);
+				}}
+				onError={() => {
+					setTurnstileWidgetStatus('errored');
+				}}
+				onExpire={() => {
+					setTurnstileWidgetStatus('expired');
+				}}
+			/>
 			<div className='mt-5'>
 				<button
 					form='contact-form'
