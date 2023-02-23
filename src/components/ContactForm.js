@@ -56,11 +56,10 @@ export default function ContactForm() {
 				...formik?.values,
 				turnstileToken,
 			};
-
-			
-			
 		} else {
 			toast.error('Please solve or wait for challenge to be solved');
+			//reset the Turnstile widget to get a new token
+			contactFormTurnstileWidgetRef?.current?.reset();
 		}
 	}
 
@@ -237,7 +236,8 @@ export default function ContactForm() {
 					setTurnstileWidgetStatus('solved');
 					setTurnstileToken(token);
 				}}
-				onError={() => {
+				onError={err => {
+					console.log(err, 'The error');
 					setTurnstileWidgetStatus('errored');
 				}}
 				onExpire={() => {
