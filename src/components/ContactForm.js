@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 import cn from 'classnames';
 import Spinner from '@/components/icons/Spinner';
 import NextLink from '@/components/NextLink';
@@ -51,11 +52,30 @@ export default function ContactForm() {
 		//validate the form again
 		formik.validateForm();
 		if (turnstileToken && turnstileWidgetStatus === 'solved') {
+			setIsSubmitting(true);
 			//the data to send in the request data
 			const reqData = {
 				...formik?.values,
 				turnstileToken,
 			};
+			try {
+				const { data } = await axios.post('/api/contact', reqData);
+				setIsSubmitting(false);
+				toast.success(data?.message);
+				//reset the form state
+				formik?.resetForm({
+					values: initialContactFormValues,
+					errors: {},
+					touched: {},
+				});
+				//reset the turnstile widget
+				setTurnstileWidgetStatus('');
+				contactFormTurnstileWidgetRef?.current?.reset();
+			} catch (err) {
+				setIsSubmitting(false);
+				contactFormTurnstileWidgetRef?.current?.reset();
+				toast.error('Failed to verify the token, try again');
+			}
 		} else {
 			toast.error('Please solve or wait for challenge to be solved');
 			//reset the Turnstile widget to get a new token
@@ -237,7 +257,6 @@ export default function ContactForm() {
 					setTurnstileToken(token);
 				}}
 				onError={err => {
-					console.log(err, 'The error');
 					setTurnstileWidgetStatus('errored');
 				}}
 				onExpire={() => {
@@ -247,7 +266,11 @@ export default function ContactForm() {
 			<div className='mt-5'>
 				<button
 					form='contact-form'
-					disabled={isSubmitting || !isValidForm}
+					disabled={
+						isSubmitting ||
+						!isValidForm ||
+						turnstileWidgetStatus !== 'solved'
+					}
 					onClick={handleFormSubmit}
 					className='w-full inline-flex justify-center items-center gap-3 bg-primary hover:bg-primary/90 text-white py-4 font-bold rounded-md drop-shadow disabled:bg-primary/50 disabled:cursor-not-allowed'
 					type='submit'
